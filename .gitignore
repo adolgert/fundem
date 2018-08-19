@@ -109,3 +109,7 @@ venv.bak/
 
 # Pycharm
 .idea/
+
+# CMake
+cmake-build-debug/
+cmake-build-release/
