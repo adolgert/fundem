@@ -10,3 +10,4 @@ LazyData: true
 RoxygenNote: 6.1.0.9000
 Imports: Rcpp (>= 0.12.18)
 LinkingTo: Rcpp
+Suggests: testthat
