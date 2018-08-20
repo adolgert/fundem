@@ -8,17 +8,17 @@ namespace fundem {
 
 template<typename REAL>
 void FirstMomentSurvival(
-        const std::vector<REAL>& mx, const std::vector<REAL>& ax,
-        const std::vector<REAL>& nx, std::vector<REAL>& survival)
+        const REAL *const mx, const REAL *const ax, const REAL *const nx,
+        REAL *const survival, size_t N)
 {
-    auto survival_iter = survival.begin();
-
-    for (auto mxi = mx.begin(), axi = ax.begin(), nxi = nx.begin();
-            mxi != mx.end();
-            mxi++, axi++, nxi++, survival_iter++
-            )
+    auto mxi = mx;
+    auto axi = ax;
+    auto nxi = nx;
+    auto si = survival;
+    auto end = mx + N;
+    for (; mxi != end; mxi++, axi++, nxi++, si++)
     {
-        *survival_iter = (1.0 - *mxi * *axi) / (1.0 + *mxi * (*nxi - *axi));
+        *si = (1.0 - *mxi * *axi) / (1.0 + *mxi * (*nxi - *axi));
     }
 }
 

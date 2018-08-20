@@ -37,7 +37,7 @@ TEST(FM_SURVIVAL_CONSTANT_MORTALITY, blah)
         expected[i] = std::exp(-nx[i] * mortality_rate);
     }
     std::vector<double> answer(mx.size());
-    FirstMomentSurvival(mx, ax, nx, answer);
+    FirstMomentSurvival(&mx[0], &ax[0], &nx[0], &answer[0], mx.size());
     EXPECT_EQ(answer.size(), mx.size());
 
     for (auto check_idx=0; check_idx<23; check_idx++) {
@@ -85,7 +85,7 @@ TEST(FM_SURVIVAL_RISING_MORTALITY, blah)
         x += nx[i];
     }
     std::vector<double> answer(mx.size());
-    FirstMomentSurvival(mx, ax, nx, answer);
+    FirstMomentSurvival(&mx[0], &ax[0], &nx[0], &answer[0], mx.size());
     EXPECT_EQ(answer.size(), mx.size());
 
     for (auto check_idx=0; check_idx<23; check_idx++) {
