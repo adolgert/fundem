@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 // rcpp_hello_world
 List rcpp_hello_world();
-RcppExport SEXP _dmos_rcpp_hello_world() {
+RcppExport SEXP _fundem_rcpp_hello_world() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -15,13 +15,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// first_moment_survival
+NumericVector first_moment_survival(NumericVector mx, NumericVector ax, NumericVector nx);
+RcppExport SEXP _fundem_first_moment_survival(SEXP mxSEXP, SEXP axSEXP, SEXP nxSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type mx(mxSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ax(axSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type nx(nxSEXP);
+    rcpp_result_gen = Rcpp::wrap(first_moment_survival(mx, ax, nx));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_dmos_rcpp_hello_world", (DL_FUNC) &_dmos_rcpp_hello_world, 0},
+    {"_fundem_rcpp_hello_world", (DL_FUNC) &_fundem_rcpp_hello_world, 0},
+    {"_fundem_first_moment_survival", (DL_FUNC) &_fundem_first_moment_survival, 3},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_dmos(DllInfo *dll) {
+RcppExport void R_init_fundem(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

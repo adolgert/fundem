@@ -1,4 +1,11 @@
-from setuptools import setup, PEP420PackageFinder
+from setuptools import setup, PEP420PackageFinder, Extension
+
+lifetable = Extension(
+    "fundem._lifetable",
+    sources=["src/lifetable.cpp"],
+    include_dirs=["include"],
+    language="c++"
+)
 
 setup(
     name="fundem",
@@ -12,6 +19,7 @@ setup(
         "documentation": ["sphinx", "sphinx_rtd_theme", "sphinx-autobuild", "sphinxcontrib-napoleon"],
         "ihme_databases": ["db_tools", "db_queries"],
     },
+    ext_modules=[lifetable],
     entry_points={
         "console_scripts": []
     },
