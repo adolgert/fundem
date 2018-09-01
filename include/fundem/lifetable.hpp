@@ -1,7 +1,9 @@
 #ifndef FUNDEM_LIFETABLE_HPP
 #define FUNDEM_LIFETABLE_HPP
 
+#include <algorithm>
 #include <cmath>
+#include <vector>
 
 
 namespace fundem {
@@ -101,6 +103,74 @@ void ConstantMortalityMeanAge(
     }
 }
 
+
+template<typename REAL>
+void GraduationMethod(
+        const REAL *const mxi, const REAL *const nx, REAL *const axi,
+        size_t age_cnt, size_t N)
+{
+    const REAL max_difference = 1e-5;
+    const int look_back = 3;
+    const int max_iterations = 20;
+    ConstantMortalityMeanAge(mxi, nx, axi, age_cnt, N);
+
+    auto working = std::vector<REAL>(2 *age_cnt);
+    auto differences = std::vector<REAL>(max_iterations + look_back);
+    auto dx = std::vector<REAL>(age_cnt);
+
+    for (size_t pop_idx = 0; pop_idx < N; pop_idx++) {
+        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt, working.begin());
+        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt, working.begin() + age_cnt);
+        auto mx = mxi + pop_idx * age_cnt;
+        for (int look_init_idx = 0; look_init_idx < look_back; look_init_idx++) {
+            differences[look_init_idx] = 1.0;
+        }
+
+        bool success = true;
+        for (int it_idx=0; it_idx < max_iterations; idx++) {
+            REAL * ax = &working[(it_idx % 2) * age_cnt];
+            REAL * last_ax = &working[((it_idx + 1) % 2) * age_cnt];
+            // Compute dx, but look for dx<0 b/c it indicates not converging.
+            REAL l = 1;
+            for (int dx_idx = 0; dx_idx < age_cnt; dx_idx++) {
+                auto px = (1.0 - mxi[dx_idx] * ax[age_idx]) /
+                        (1.0 + mx[age_idx] * (nx[age_idx] - ax[age_idx]));
+                if (px < 0) {
+                    success = false;
+                }
+                dx[age_idx] = l * px;
+                l *= px;
+            }
+
+            // Compute the new ax.
+            for (int shift_idx=1; shift_idx < age_cnt - 1; shift_idx++) {
+                if (dx[shift_idx] > 1e-8) {
+                    ax[shift_idx] = nx[shift_idx] * (dx[shift_idx - 1] +
+                                                     12 * dx[shift_idx] + dx[shift_idx] + 1) / 24 / dx[shift_idx];
+                } else {
+                    success = false;
+                }
+            }
+
+            // Compute difference between this and last iteration.
+            REAL iter_difference = 0;
+            for (int diff_idx=0; diff_idx < age_cnt; diff_idx++) {
+                iter_difference = std::max(iter_difference, std::abs(ax[diff_idx] - last_ax[diff_idx]));
+            }
+            differences[it_idx + look_back] = iter_difference;
+            if (iter_difference > differences[it_idx]) {
+                success = false;
+            }
+            std::copy(ax, ax + age_cnt, last_ax);
+            if (iter_difference < max_difference) {
+                break;
+            }
+        }
+        if (success) {
+            std::copy(ax, ax + age_cnt, axi + pop_idx * age_cnt);
+        }
+    }
+}
 
 }
 
