@@ -29,6 +29,17 @@ FUNDEM_API void first_moment_survival(
 }
 
 
+FUNDEM_API void first_moment_population(
+        double* mx, double* ax, double* nx, double* lx, double* dx, size_t age_cnt, size_t N)
+{
+    try {
+        FirstMomentPopulation(mx, ax, nx, lx, dx, age_cnt, N);
+    } catch (std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+}
+
+
 #ifdef __cplusplus
 }
 #endif
