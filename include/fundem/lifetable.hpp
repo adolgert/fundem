@@ -9,16 +9,19 @@ namespace fundem {
 template<typename REAL>
 void FirstMomentSurvival(
         const REAL *const mx, const REAL *const ax, const REAL *const nx,
-        REAL *const survival, size_t N)
+        REAL *const survival, size_t age_cnt, size_t N)
 {
     auto mxi = mx;
     auto axi = ax;
-    auto nxi = nx;
     auto si = survival;
-    auto end = mx + N;
-    for (; mxi != end; mxi++, axi++, nxi++, si++)
+    for (size_t pop_idx=0; pop_idx < N; pop_idx++)
     {
-        *si = (1.0 - *mxi * *axi) / (1.0 + *mxi * (*nxi - *axi));
+        auto nxi = nx;
+        auto mx_end = mxi + age_cnt;
+        for (; mxi != mx_end; mxi++, axi++, nxi++, si++)
+        {
+            *si = (1.0 - *mxi * *axi) / (1.0 + *mxi * (*nxi - *axi));
+        }
     }
 }
 
