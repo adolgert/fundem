@@ -2,6 +2,7 @@
 #include <ostream>
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "fundem/hazards.hpp"
 #include "fundem/lifetable.hpp"
 
 
@@ -9,11 +10,7 @@ using namespace fundem;
 
 double epsilon = 1e-9;
 
-// Simple test, does not use gmock
-TEST(Dummy, foobar)
-{
-EXPECT_EQ(1, 1);
-}
+
 
 
 /*! Tests survival calculation for constant mortality rate.
@@ -37,13 +34,15 @@ TEST(FM_SURVIVAL_CONSTANT_MORTALITY, blah)
         expected[i] = std::exp(-nx[i] * mortality_rate);
     }
     std::vector<double> answer(mx.size());
-    FirstMomentSurvival(&mx[0], &ax[0], &nx[0], &answer[0], mx.size());
+    FirstMomentSurvival(&mx[0], &ax[0], &nx[0], &answer[0], mx.size(), 1);
     EXPECT_EQ(answer.size(), mx.size());
 
     for (auto check_idx=0; check_idx<23; check_idx++) {
         EXPECT_LT(std::abs(answer[check_idx] - expected[check_idx]), epsilon);
     }
 }
+
+
 
 
 /*! Tests survival calculation for constant mortality rate.
@@ -85,7 +84,7 @@ TEST(FM_SURVIVAL_RISING_MORTALITY, blah)
         x += nx[i];
     }
     std::vector<double> answer(mx.size());
-    FirstMomentSurvival(&mx[0], &ax[0], &nx[0], &answer[0], mx.size());
+    FirstMomentSurvival(&mx[0], &ax[0], &nx[0], &answer[0], mx.size(), 1);
     EXPECT_EQ(answer.size(), mx.size());
 
     for (auto check_idx=0; check_idx<23; check_idx++) {
@@ -93,3 +92,63 @@ TEST(FM_SURVIVAL_RISING_MORTALITY, blah)
     }
 }
 
+
+
+
+/*! See if the graduation method converges for a known distribution.
+ *  Uses Siler distribution for the mx.
+ */
+ TEST(GRADUATION_SILER, graduation_siler)
+{
+     const int age_cnt = 20;
+     std::vector<double> mx(age_cnt);
+     std::vector<double> nx(age_cnt);
+
+     for (int nx_init=0; nx_init < age_cnt; nx_init++) {
+         nx[nx_init] = 5.0;
+     }
+
+     double x = 0;
+     mx[0] = siler_default(0.5, 0.0);
+     for (int mx_init=1; mx_init < age_cnt; mx_init++) {
+         mx[mx_init] = siler_default(x + 0.5 * nx[mx_init], 0.0);
+         x += nx[mx_init];
+     }
+
+     std::vector<double> ax(age_cnt);
+     GraduationMethod(&mx[0], &nx[0], &ax[0], age_cnt, 1);
+
+     for (int check_idx=0; check_idx < age_cnt; check_idx++) {
+         EXPECT_LT(ax[check_idx], nx[check_idx]);
+         EXPECT_LT(0, ax[check_idx]);
+     }
+}
+
+
+
+
+/*! Graduation with this method should fail for different nx.
+ */
+TEST(GRADUATION_SILER_AGE_INCONSISTENT, graduation_siler_age_inconsistent)
+{
+    std::vector<double> mx(23);
+    std::vector<double> nx(23);
+
+    nx[0] = 7.0/365.0;
+    nx[1] = 28.0/365.0;
+    nx[2] = (365 - 7 - 28) / 365.0;
+    nx[3] = 4;
+    for (int nx_init=4; nx_init < 23; nx_init++) {
+        nx[nx_init] = 5.0;
+    }
+
+    double x = 0;
+    for (int mx_init=0; mx_init < 23; mx_init++) {
+        mx[mx_init] = siler_default(x + 0.5 * nx[mx_init], 0.0);
+        x += nx[mx_init];
+    }
+
+    std::vector<double> ax(23);
+    ASSERT_THROW(GraduationMethod(&mx[0], &nx[0], &ax[0], 23, 1),
+            std::runtime_error);
+}

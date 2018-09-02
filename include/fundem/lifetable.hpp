@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <vector>
 
 
@@ -11,7 +12,7 @@ namespace fundem {
 template<typename REAL>
 void FirstMomentSurvival(
         const REAL *const mx, const REAL *const ax, const REAL *const nx,
-        REAL *const survival, size_t age_cnt, size_t N)
+        REAL *const survival, int age_cnt, size_t N)
 {
     auto mxi = mx;
     auto axi = ax;
@@ -31,7 +32,7 @@ void FirstMomentSurvival(
 template<typename REAL>
 void FirstMomentPopulation(
         const REAL *const mx, const REAL *const ax, const REAL *const nx,
-        REAL *const lx, REAL* dx, size_t age_cnt, size_t N)
+        REAL *const lx, REAL* dx, int age_cnt, size_t N)
 {
     auto mxi = mx;
     auto axi = ax;
@@ -56,7 +57,7 @@ void FirstMomentPopulation(
 template<typename REAL>
 void FirstMomentPeriodLifeExpectancy(
         const REAL *const mx, const REAL *const ax, const REAL *const nx,
-        REAL *const le, size_t age_cnt, size_t N)
+        REAL *const le, int age_cnt, size_t N)
 {
     for (size_t pop_idx=0; pop_idx < N; pop_idx++)
     {
@@ -75,28 +76,29 @@ void FirstMomentPeriodLifeExpectancy(
 template<typename REAL>
 void ConstantMortalityMeanAge(
         const REAL *const mxi,  const REAL *const nxi, REAL *const ax,
-        size_t age_cnt, size_t N)
+        int age_cnt, size_t N)
 {
     const double taylor_a = 1e-4;
     const double taylor_b = 1e-3;
 
     for (size_t pop_idx=0; pop_idx < N; pop_idx++)
     {
-        for (size_t age_idx = 0; age_idx < age_cnt; age_idx++)
+        for (int age_idx = 0; age_idx < age_cnt; age_idx++)
         {
-            auto mx = mxi[pop_idx * age_cnt + age_idx];
+            auto idx = pop_idx * age_cnt + age_idx;
+            auto mx = mxi[idx];
             auto nx = nxi[age_idx];
 
             if (mx <= taylor_a) {
-                *ax = nx * (0.5 + nx * (mx/12 + std::pow(mx, 3) * std::pow(nx, 2) / 720));
+                ax[idx] = nx * (0.5 + nx * (mx/12 + std::pow(mx, 3) * std::pow(nx, 2) / 720));
             } else if (mx >= taylor_b) {
                 auto expx = std::exp(-mx * nx);
-                *ax = 1 / mx - nx * expx / (1 - expx);
+                ax[idx] = 1 / mx - nx * expx / (1 - expx);
             } else {
                 auto expx = std::exp(-mx * nx);
-                *ax = (nx * (0.5 + nx * (mx / 12 + std::pow(mx, 3) * std::pow(nx, 2) / 720))) *
+                ax[idx] = (nx * (0.5 + nx * (mx / 12 + std::pow(mx, 3) * std::pow(nx, 2) / 720))) *
                         (mx - taylor_a) / (taylor_b - taylor_a);
-                *ax += ((1 / mx) - (nx * expx) / (1 - expx)) *
+                ax[idx] += ((1 / mx) - (nx * expx) / (1 - expx)) *
                         (taylor_b - mx) / (taylor_b - taylor_a);
             }
         }
@@ -107,69 +109,86 @@ void ConstantMortalityMeanAge(
 template<typename REAL>
 void GraduationMethod(
         const REAL *const mxi, const REAL *const nx, REAL *const axi,
-        size_t age_cnt, size_t N)
+        int age_cnt, size_t N)
 {
     const REAL max_difference = 1e-5;
     const int look_back = 3;
     const int max_iterations = 20;
+
+    for (int check_n_idx=0; check_n_idx < age_cnt; check_n_idx++) {
+        if (nx[check_n_idx] != nx[0]) {
+            throw std::runtime_error(
+                    "All age intervals must match for graduation.");
+        }
+    }
+    const REAL n = nx[0];
+
+    // The constant mortality result is the starting approximation and
+    // the fallback answer if graduation fails. This initial condition
+    // is well-behaved in that the ax is >0 and <= n/2.
     ConstantMortalityMeanAge(mxi, nx, axi, age_cnt, N);
 
-    auto working = std::vector<REAL>(2 *age_cnt);
+    auto working = std::vector<REAL>(2 * age_cnt);
     auto differences = std::vector<REAL>(max_iterations + look_back);
     auto dx = std::vector<REAL>(age_cnt);
 
     for (size_t pop_idx = 0; pop_idx < N; pop_idx++) {
-        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt, working.begin());
-        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt, working.begin() + age_cnt);
+        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt,
+                working.begin());
+        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt,
+                working.begin() + age_cnt);
         auto mx = mxi + pop_idx * age_cnt;
         for (int look_init_idx = 0; look_init_idx < look_back; look_init_idx++) {
             differences[look_init_idx] = 1.0;
         }
 
         bool success = true;
-        REAL* answer;
+        REAL* answer = nullptr;
         for (int it_idx=0; it_idx < max_iterations; it_idx++) {
             REAL * ax = &working[(it_idx % 2) * age_cnt];
             const REAL * last_ax = &working[((it_idx + 1) % 2) * age_cnt];
             // Compute dx, but look for dx<0 b/c it indicates not converging.
             REAL l = 1;
             for (int dx_idx = 0; dx_idx < age_cnt; dx_idx++) {
-                auto px = (1.0 - mxi[dx_idx] * ax[age_idx]) /
-                        (1.0 + mx[age_idx] * (nx[age_idx] - ax[age_idx]));
-                if (px < 0) {
-                    success = false;
-                }
-                dx[age_idx] = l * (1 - px);
+                auto px = (1.0 - mxi[dx_idx] * ax[dx_idx]) /
+                        (1.0 + mx[dx_idx] * (n - ax[dx_idx]));
+                dx[dx_idx] = l * (1 - px);
                 l *= px;
             }
 
             // Compute the new ax.
             for (int shift_idx=1; shift_idx < age_cnt - 1; shift_idx++) {
                 if (dx[shift_idx] > 1e-8) {
-                    ax[shift_idx] = nx[shift_idx] * (dx[shift_idx - 1] +
-                                                     12 * dx[shift_idx] + dx[shift_idx] + 1) / 24 / dx[shift_idx];
+                    ax[shift_idx] = n *
+                            (-dx[shift_idx - 1] + 12 * dx[shift_idx]
+                            + dx[shift_idx] + 1) / 24 / dx[shift_idx];
                 } else {
-                    success = false;
+                    // Constant mortality rate applies when dx is small
+                    // because a small value implies a small derivative.
+                    ax[shift_idx] = n * (0.5 - n * mx[shift_idx] / 12
+                            + std::pow(n * mx[shift_idx], 3) / 720);
                 }
             }
 
             // Compute difference between this and last iteration.
             REAL iter_difference = 0;
+            bool out_of_bounds = false;
             for (int diff_idx=0; diff_idx < age_cnt; diff_idx++) {
-                iter_difference = std::max(iter_difference, std::abs(ax[diff_idx] - last_ax[diff_idx]));
+                iter_difference = std::max(iter_difference,
+                        std::abs(ax[diff_idx] - last_ax[diff_idx]));
+                out_of_bounds |= ax[diff_idx] < 0 || ax[diff_idx] > n - 1e-6;
             }
             differences[it_idx + look_back] = iter_difference;
-            if (iter_difference > differences[it_idx]) {
-                success = false;
-            }
-            if (iter_difference < max_difference) {
+            if (out_of_bounds || iter_difference > differences[it_idx]) {
+                break;
+            } else if (iter_difference < max_difference) {
                 answer = ax;
                 break;
-            }
+            } // else keep going.
         }
-        if (success) {
+        if (nullptr != answer) {
             std::copy(answer, answer + age_cnt, axi + pop_idx * age_cnt);
-        }
+        } // else it's already initialized with the constant-mortality answer.
     }
 }
 

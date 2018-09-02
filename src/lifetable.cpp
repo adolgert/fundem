@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 FUNDEM_API void first_moment_survival(
-        double* mx, double* ax, double* nx, double* s, size_t age_cnt, size_t N)
+        double* mx, double* ax, double* nx, double* s, int age_cnt, size_t N)
 {
     try {
         FirstMomentSurvival(mx, ax, nx, s, age_cnt, N);
@@ -30,7 +30,7 @@ FUNDEM_API void first_moment_survival(
 
 
 FUNDEM_API void first_moment_population(
-        double* mx, double* ax, double* nx, double* lx, double* dx, size_t age_cnt, size_t N)
+        double* mx, double* ax, double* nx, double* lx, double* dx, int age_cnt, size_t N)
 {
     try {
         FirstMomentPopulation(mx, ax, nx, lx, dx, age_cnt, N);
