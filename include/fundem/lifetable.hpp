@@ -78,8 +78,8 @@ void ConstantMortalityMeanAge(
         const REAL *const mxi,  const REAL *const nxi, REAL *const ax,
         int age_cnt, size_t N)
 {
-    const double taylor_a = 1e-4;
-    const double taylor_b = 1e-3;
+    const REAL taylor_a = 1e-4;
+    const REAL taylor_b = 1e-3;
 
     for (size_t pop_idx=0; pop_idx < N; pop_idx++)
     {
@@ -112,7 +112,7 @@ void GraduationMethod(
         int age_cnt, size_t N)
 {
     const REAL max_difference = 1e-5;
-    const int look_back = 3;
+    const int look_back = 6;
     const int max_iterations = 20;
 
     for (int check_n_idx=0; check_n_idx < age_cnt; check_n_idx++) {
@@ -139,10 +139,9 @@ void GraduationMethod(
                 working.begin() + age_cnt);
         auto mx = mxi + pop_idx * age_cnt;
         for (int look_init_idx = 0; look_init_idx < look_back; look_init_idx++) {
-            differences[look_init_idx] = 1.0;
+            differences[look_init_idx] = n;
         }
 
-        bool success = true;
         REAL* answer = nullptr;
         for (int it_idx=0; it_idx < max_iterations; it_idx++) {
             REAL * ax = &working[(it_idx % 2) * age_cnt];
@@ -150,36 +149,36 @@ void GraduationMethod(
             // Compute dx, but look for dx<0 b/c it indicates not converging.
             REAL l = 1;
             for (int dx_idx = 0; dx_idx < age_cnt; dx_idx++) {
-                auto px = (1.0 - mxi[dx_idx] * ax[dx_idx]) /
-                        (1.0 + mx[dx_idx] * (n - ax[dx_idx]));
+                auto px = (1.0 - mx[dx_idx] * last_ax[dx_idx]) /
+                        (1.0 + mx[dx_idx] * (n - last_ax[dx_idx]));
                 dx[dx_idx] = l * (1 - px);
                 l *= px;
             }
 
             // Compute the new ax.
             for (int shift_idx=1; shift_idx < age_cnt - 1; shift_idx++) {
+                REAL axx = -n;
                 if (dx[shift_idx] > 1e-8) {
-                    ax[shift_idx] = n *
-                            (-dx[shift_idx - 1] + 12 * dx[shift_idx]
-                            + dx[shift_idx] + 1) / 24 / dx[shift_idx];
-                } else {
-                    // Constant mortality rate applies when dx is small
-                    // because a small value implies a small derivative.
-                    ax[shift_idx] = n * (0.5 - n * mx[shift_idx] / 12
-                            + std::pow(n * mx[shift_idx], 3) / 720);
+                    // dx drops exponentially, so this equation gives wild
+                    // values for large ages.
+                    axx = n * (0.5 +
+                            (dx[shift_idx + 1] - dx[shift_idx - 1])
+                            / (24 * dx[shift_idx]));
                 }
+                if (axx < 0 || axx > n) { // Fall back to constant mortality.
+                    axx = axi[pop_idx * age_cnt + shift_idx];
+                }
+                ax[shift_idx] = axx;
             }
 
             // Compute difference between this and last iteration.
             REAL iter_difference = 0;
-            bool out_of_bounds = false;
             for (int diff_idx=0; diff_idx < age_cnt; diff_idx++) {
                 iter_difference = std::max(iter_difference,
                         std::abs(ax[diff_idx] - last_ax[diff_idx]));
-                out_of_bounds |= ax[diff_idx] < 0 || ax[diff_idx] > n - 1e-6;
             }
             differences[it_idx + look_back] = iter_difference;
-            if (out_of_bounds || iter_difference > differences[it_idx]) {
+            if (iter_difference > differences[it_idx]) {
                 break;
             } else if (iter_difference < max_difference) {
                 answer = ax;

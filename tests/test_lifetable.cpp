@@ -100,7 +100,7 @@ TEST(FM_SURVIVAL_RISING_MORTALITY, blah)
  */
  TEST(GRADUATION_SILER, graduation_siler)
 {
-     const int age_cnt = 20;
+     const int age_cnt = 16;
      std::vector<double> mx(age_cnt);
      std::vector<double> nx(age_cnt);
 
@@ -109,8 +109,7 @@ TEST(FM_SURVIVAL_RISING_MORTALITY, blah)
      }
 
      double x = 0;
-     mx[0] = siler_default(0.5, 0.0);
-     for (int mx_init=1; mx_init < age_cnt; mx_init++) {
+     for (int mx_init=0; mx_init < age_cnt; mx_init++) {
          mx[mx_init] = siler_default(x + 0.5 * nx[mx_init], 0.0);
          x += nx[mx_init];
      }
