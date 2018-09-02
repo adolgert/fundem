@@ -46,7 +46,7 @@ void FirstMomentPopulation(
         {
             *lxi = l;
             auto px = (1.0 - *mxi * *axi) / (1.0 + *mxi * (*nxi - *axi));
-            *dxi = l * px;
+            *dxi = l * (1 - px);
             l *= px;
         }
     }
@@ -127,9 +127,10 @@ void GraduationMethod(
         }
 
         bool success = true;
-        for (int it_idx=0; it_idx < max_iterations; idx++) {
+        REAL* answer;
+        for (int it_idx=0; it_idx < max_iterations; it_idx++) {
             REAL * ax = &working[(it_idx % 2) * age_cnt];
-            REAL * last_ax = &working[((it_idx + 1) % 2) * age_cnt];
+            const REAL * last_ax = &working[((it_idx + 1) % 2) * age_cnt];
             // Compute dx, but look for dx<0 b/c it indicates not converging.
             REAL l = 1;
             for (int dx_idx = 0; dx_idx < age_cnt; dx_idx++) {
@@ -138,7 +139,7 @@ void GraduationMethod(
                 if (px < 0) {
                     success = false;
                 }
-                dx[age_idx] = l * px;
+                dx[age_idx] = l * (1 - px);
                 l *= px;
             }
 
@@ -161,13 +162,13 @@ void GraduationMethod(
             if (iter_difference > differences[it_idx]) {
                 success = false;
             }
-            std::copy(ax, ax + age_cnt, last_ax);
             if (iter_difference < max_difference) {
+                answer = ax;
                 break;
             }
         }
         if (success) {
-            std::copy(ax, ax + age_cnt, axi + pop_idx * age_cnt);
+            std::copy(answer, answer + age_cnt, axi + pop_idx * age_cnt);
         }
     }
 }
