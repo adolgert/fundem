@@ -194,10 +194,26 @@ void GraduationMethod(
 }
 
 
+/*! Graduation method to determine n_a_x using monotonic splines.
+ *  This estimates nax using splines that guarantee decreasing lx.
+ *  Unlike the traditional graduation method, this can estimate
+ *  ax for all age groups and for nx that have different sizes.
+ *  There are two problems: dx=0 for young ages, which can happen
+ *  for small-population data, and large mx for old ages, where
+ *  dx=0 because lx is so small. Here, it isn't the case that
+ *  ax=0.5.
+ *
+ * @tparam REAL
+ * @param mxi
+ * @param nx
+ * @param axi
+ * @param age_cnt
+ * @param pop_cnt
+ */
 template<typename REAL>
 void GraduationMethodSteffen(
         const REAL *const mxi, const REAL *const nx, REAL *const axi,
-        int age_cnt, size_t N)
+        int age_cnt, size_t pop_cnt)
 {
     const REAL max_difference = 1e-5;
     const int look_back = 6;
@@ -213,7 +229,7 @@ void GraduationMethodSteffen(
     // The constant mortality result is the starting approximation and
     // the fallback answer if graduation fails. This initial condition
     // is well-behaved in that the ax is >0 and <= n/2.
-    ConstantMortalityMeanAge(mxi, nx, axi, age_cnt, N);
+    ConstantMortalityMeanAge(mxi, nx, axi, age_cnt, pop_cnt);
 
     auto working = std::vector<REAL>(2 * age_cnt);
     auto differences = std::vector<REAL>(max_iterations + look_back);
@@ -222,7 +238,7 @@ void GraduationMethodSteffen(
     gsl_interp_accel *acc = gsl_interp_accel_alloc();
     gsl_spline *spline_steffen = gsl_spline_alloc(gsl_interp_steffen, age_cnt + 1);
 
-    for (size_t pop_idx = 0; pop_idx < N; pop_idx++) {
+    for (size_t pop_idx = 0; pop_idx < pop_cnt; pop_idx++) {
         std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt,
                   working.begin());
         std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt,
@@ -249,9 +265,10 @@ void GraduationMethodSteffen(
             for (int shift_idx=0; shift_idx < age_cnt; shift_idx++) {
                 auto avg_l = gsl_spline_eval_integ(
                         spline_steffen, x[shift_idx], x[shift_idx + 1], acc) / nx[shift_idx];
+                auto numerator = avg_l - lx[shift_idx + 1];
                 auto dx = lx[shift_idx] - lx[shift_idx + 1];
-                if (dx > 1e-12) {
-                    ax[shift_idx] = nx[shift_idx] * (avg_l - lx[shift_idx + 1]) / dx;
+                if (dx > 1e-16) {
+                    ax[shift_idx] = nx[shift_idx] * numerator / dx;
                 } else {
                     ax[shift_idx] = 0.5 * nx[shift_idx];
                 }
