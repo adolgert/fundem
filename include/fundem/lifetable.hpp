@@ -5,6 +5,8 @@
 #include <cmath>
 #include <stdexcept>
 #include <vector>
+#include "gsl/gsl_math.h"
+#include "gsl/gsl_spline.h"
 
 
 namespace fundem {
@@ -191,6 +193,91 @@ void GraduationMethod(
     }
 }
 
+
+template<typename REAL>
+void GraduationMethodSteffen(
+        const REAL *const mxi, const REAL *const nx, REAL *const axi,
+        int age_cnt, size_t N)
+{
+    const REAL max_difference = 1e-5;
+    const int look_back = 6;
+    const int max_iterations = 20;
+
+    std::vector<REAL> x(age_cnt + 1);
+    x[0] = 0;
+    for (int make_x_idx=1; make_x_idx < age_cnt + 1; make_x_idx++) {
+        x[make_x_idx] = x[make_x_idx - 1] + nx[make_x_idx - 1];
+    }
+    const REAL n_max = *std::max_element(nx, nx + age_cnt);
+
+    // The constant mortality result is the starting approximation and
+    // the fallback answer if graduation fails. This initial condition
+    // is well-behaved in that the ax is >0 and <= n/2.
+    ConstantMortalityMeanAge(mxi, nx, axi, age_cnt, N);
+
+    auto working = std::vector<REAL>(2 * age_cnt);
+    auto differences = std::vector<REAL>(max_iterations + look_back);
+    auto lx = std::vector<REAL>(age_cnt + 1);
+
+    gsl_interp_accel *acc = gsl_interp_accel_alloc();
+    gsl_spline *spline_steffen = gsl_spline_alloc(gsl_interp_steffen, age_cnt + 1);
+
+    for (size_t pop_idx = 0; pop_idx < N; pop_idx++) {
+        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt,
+                  working.begin());
+        std::copy(axi + pop_idx * age_cnt, axi + (pop_idx + 1) * age_cnt,
+                  working.begin() + age_cnt);
+        auto mx = mxi + pop_idx * age_cnt;
+        for (int look_init_idx = 0; look_init_idx < look_back; look_init_idx++) {
+            differences[look_init_idx] = n_max;
+        }
+
+        REAL* answer = nullptr;
+        for (int it_idx=0; it_idx < max_iterations; it_idx++) {
+            REAL * ax = &working[(it_idx % 2) * age_cnt];
+            const REAL * last_ax = &working[((it_idx + 1) % 2) * age_cnt];
+            // Compute dx, but look for dx<0 b/c it indicates not converging.
+            lx[0] = 1.0;
+            for (int lx_idx = 0; lx_idx < age_cnt; lx_idx++) {
+                auto px = (1.0 - mx[lx_idx] * last_ax[lx_idx]) /
+                          (1.0 + mx[lx_idx] * (nx[lx_idx] - last_ax[lx_idx]));
+                lx[lx_idx + 1] = lx[lx_idx] * px;
+            }
+
+            gsl_spline_init(spline_steffen, &x[0], &lx[0], age_cnt + 1);
+            // Compute the new ax.
+            for (int shift_idx=0; shift_idx < age_cnt; shift_idx++) {
+                auto avg_l = gsl_spline_eval_integ(
+                        spline_steffen, x[shift_idx], x[shift_idx + 1], acc) / nx[shift_idx];
+                auto dx = lx[shift_idx] - lx[shift_idx + 1];
+                if (dx > 1e-12) {
+                    ax[shift_idx] = nx[shift_idx] * (avg_l - lx[shift_idx + 1]) / dx;
+                } else {
+                    ax[shift_idx] = 0.5 * nx[shift_idx];
+                }
+            }
+
+            // Compute difference between this and last iteration.
+            REAL iter_difference = 0;
+            for (int diff_idx=0; diff_idx < age_cnt; diff_idx++) {
+                iter_difference = std::max(iter_difference,
+                                           std::abs(ax[diff_idx] - last_ax[diff_idx]));
+            }
+            differences[it_idx + look_back] = iter_difference;
+            if (iter_difference > differences[it_idx]) {
+                break;
+            } else if (iter_difference < max_difference) {
+                answer = ax;
+                break;
+            } // else keep going.
+        }
+        if (nullptr != answer) {
+            std::copy(answer, answer + age_cnt, axi + pop_idx * age_cnt);
+        } // else axi is already initialized with the constant-mortality answer.
+    }
+    gsl_spline_free(spline_steffen);
+    gsl_interp_accel_free(acc);
+}
 }
 
 #endif //FUNDEM_LIFETABLE_HPP

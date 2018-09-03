@@ -151,3 +151,64 @@ TEST(GRADUATION_SILER_AGE_INCONSISTENT, graduation_siler_age_inconsistent)
     ASSERT_THROW(GraduationMethod(&mx[0], &nx[0], &ax[0], 23, 1),
             std::runtime_error);
 }
+
+
+/*! Tries monotonic-decreasing polynomial.
+ *  Uses Siler distribution for the mx.
+ */
+TEST(GRADUATION_STEFFEN, graduation_steffen)
+{
+    const int age_cnt = 20;
+    std::vector<double> mx(age_cnt);
+    std::vector<double> nx(age_cnt);
+
+    for (int nx_init=0; nx_init < age_cnt; nx_init++) {
+        nx[nx_init] = 5.0;
+    }
+
+    double x = 0;
+    for (int mx_init=0; mx_init < age_cnt; mx_init++) {
+        mx[mx_init] = siler_default(x + 0.5 * nx[mx_init], 0.0);
+        x += nx[mx_init];
+    }
+
+    std::vector<double> ax(age_cnt);
+    GraduationMethodSteffen(&mx[0], &nx[0], &ax[0], age_cnt, 1);
+
+    for (int check_idx=0; check_idx < age_cnt; check_idx++) {
+        EXPECT_LT(ax[check_idx], nx[check_idx]);
+        EXPECT_LT(0, ax[check_idx]);
+    }
+}
+
+
+
+// The Steffen polynomial can handle different-sized age groups.
+TEST(GRADUATION_STEFFEN_AGE_INCONSISTENT, graduation_steffen_age_inconsistent)
+{
+    const int age_cnt = 23;
+    std::vector<double> mx(age_cnt);
+    std::vector<double> nx(age_cnt);
+
+    nx[0] = 7.0/365.0;
+    nx[1] = 28.0/365.0;
+    nx[2] = (365 - 7 - 28) / 365.0;
+    nx[3] = 4;
+    for (int nx_init=4; nx_init < age_cnt; nx_init++) {
+        nx[nx_init] = 5.0;
+    }
+
+    double x = 0;
+    for (int mx_init=0; mx_init < age_cnt; mx_init++) {
+        mx[mx_init] = siler_default(x + 0.5 * nx[mx_init], 0.0);
+        x += nx[mx_init];
+    }
+
+    std::vector<double> ax(age_cnt);
+    GraduationMethodSteffen(&mx[0], &nx[0], &ax[0], age_cnt, 1);
+
+    for (int check_idx=0; check_idx < age_cnt; check_idx++) {
+        EXPECT_LT(ax[check_idx], nx[check_idx]);
+        EXPECT_LT(0, ax[check_idx]);
+    }
+}
