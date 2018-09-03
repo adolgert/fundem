@@ -16,7 +16,8 @@ setup(
     install_requires=["numpy", "scipy", "toml"],
     extras_require={
         "testing": ["hypothesis", "pytest", "pytest-mock"],
-        "documentation": ["sphinx", "sphinx_rtd_theme", "sphinx-autobuild", "sphinxcontrib-napoleon"],
+        "documentation": ["sphinx", "sphinx_rtd_theme", "sphinx-autobuild",
+                          "sphinxcontrib-napoleon"],
         "ihme_databases": ["db_tools", "db_queries"],
     },
     ext_modules=[lifetable],

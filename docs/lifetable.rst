@@ -1,7 +1,7 @@
 Lifetable
 =========
 
-.. index:: survival
+.. index:: survival, px
 
 .. function:: first_moment_survival(mx, ax, nx)
 
@@ -22,7 +22,8 @@ Lifetable
 
        {}_np_x = \frac{1-m_x a_x}{1+ m_x(n_x - a_x)}
 
-.. index:: deaths, population
+
+.. index:: deaths, population, dx, lx
 
 .. function:: first_moment_population(mx, ax, nx)
 
@@ -44,7 +45,7 @@ Lifetable
        {}_np_x = \frac{1-m_x a_x}{1+ m_x(n_x - a_x)}
 
 
-.. index:: life expectancy, le
+.. index:: life expectancy, LE
 
 .. function:: first_moment_period_life_expectancy(mx, ax, nx)
 
@@ -72,6 +73,7 @@ Lifetable
        {1+m_x(n_x-{}_na_x)}
 
     starting from :math:`\mathring{e}_x=a_x` for the last, half-open interval.
+
 
 .. index:: graduation method
 

@@ -67,3 +67,24 @@ prefixed or suffixed names.
 
  * `constant_mortality` applies the assumption of a constant continuous
    mortality rate to derive the mean age of death.
+
+
+Exceptions
+----------
+
+These functions throw exceptions when the inputs are outside the function
+domain. For instance, if young age mortality is high and the mean age
+is constructed as :math:`n_x/2`, then it can be the case that
+a survival calculation encounters a divide-by-zero exception. This code
+will stop and raise an error. It chooses not to automatically catch such
+errors and clamp values to the function range.
+
+Take, for example, calculations involving young ages. If the input data
+is from countries with few data points, then it's reasonable to apply
+the Coale-Demeney young ages fit to :math:`q_x` or its equivalent Preston
+fit to :math:`m_x`. This yields consistent and reasonable mean ages of
+death in every case. If the input data is just :math:`{}_nm_x`, then
+there are supplied methods to generate a reasonable `{}_na_x` in every case.
+If the input data is from previous calculations, then data outside
+the expected domain is likely a problem the modeler should address
+explicitly, so the function raises an exception.
