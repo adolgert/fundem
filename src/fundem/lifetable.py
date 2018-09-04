@@ -21,7 +21,7 @@ _lifetable.first_moment_survival.argtypes = [
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
-    ctypes.int,
+    ctypes.c_int,
     ctypes.c_size_t
 ]
 
