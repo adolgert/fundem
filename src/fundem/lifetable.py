@@ -4,7 +4,7 @@ from pkg_resources import resource_filename, resource_listdir
 
 import numpy as np
 
-
+# sysconfig.get_config_var('EXT_SUFFIX')
 compiled_libraries = {
     filename.split(".")[0]: Path(resource_filename("fundem", filename))
     for filename in resource_listdir("fundem", ".")
