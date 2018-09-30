@@ -1,3 +1,5 @@
+#include <exception>
+#include "Python.h"
 #include "fundem/lifetable.hpp"
 
 using namespace fundem;
@@ -17,9 +19,24 @@ extern "C" {
 #endif
 
 FUNDEM_API void first_moment_survival(
-        double* mx, double* ax, double* nx, double* s, int N)
+        double* mx, double* ax, double* nx, double* s, int age_cnt, size_t N)
 {
-    FirstMomentSurvival(mx, ax, nx, s, N);
+    try {
+        FirstMomentSurvival(mx, ax, nx, s, age_cnt, N);
+    } catch (std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
+}
+
+
+FUNDEM_API void first_moment_population(
+        double* mx, double* ax, double* nx, double* lx, double* dx, int age_cnt, size_t N)
+{
+    try {
+        FirstMomentPopulation(mx, ax, nx, lx, dx, age_cnt, N);
+    } catch (std::exception& e) {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+    }
 }
 
 

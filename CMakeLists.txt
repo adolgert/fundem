@@ -30,7 +30,7 @@ endif()
 #add_library(cliona SHARED src/lifetable.hpp)
 
 add_executable(fundem_test tests/test_lifetable.cpp)
-target_link_libraries(fundem_test gtest gmock_main)
+target_link_libraries(fundem_test gtest gmock_main gsl)
 target_include_directories(fundem_test PRIVATE include)
 
 add_test(NAME example_test COMMAND fundem_test)
